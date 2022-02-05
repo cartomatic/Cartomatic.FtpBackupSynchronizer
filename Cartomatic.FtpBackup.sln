@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Cartomatic", "Cartomatic", "{D7769306-FF04-4839-93B2-EB36BC904E20}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cartomatic.Utils", "..\Utils\Cartomatic.Utils\Cartomatic.Utils.csproj", "{70570AF6-1428-4FFE-8C41-A038E5F9B328}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cartomatic.FtpBackupSynchronizer", "Cartomatic.FtpBackupSynchronizer\Cartomatic.FtpBackupSynchronizer.csproj", "{E99A9905-B354-40FF-B3BE-26B0632514C7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{70570AF6-1428-4FFE-8C41-A038E5F9B328}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70570AF6-1428-4FFE-8C41-A038E5F9B328}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70570AF6-1428-4FFE-8C41-A038E5F9B328}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70570AF6-1428-4FFE-8C41-A038E5F9B328}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E99A9905-B354-40FF-B3BE-26B0632514C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E99A9905-B354-40FF-B3BE-26B0632514C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E99A9905-B354-40FF-B3BE-26B0632514C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E99A9905-B354-40FF-B3BE-26B0632514C7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{70570AF6-1428-4FFE-8C41-A038E5F9B328} = {D7769306-FF04-4839-93B2-EB36BC904E20}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E2EE11F1-362E-4240-96F9-ACB2D4781C73}
+	EndGlobalSection
+EndGlobal
