@@ -116,7 +116,7 @@ namespace Cartomatic
             var emailSender = new Cartomatic.Utils.Email.EmailSender();
             foreach (var emailRecipient in emailRecipients)
             {
-                await emailSender.SendAsync(emailAcount, emailTemplate, emailRecipient);
+                await emailSender.SendAsync(emailAcount, emailTemplate, emailRecipient, (string msg) => Log(msg));
             }
         }
 
@@ -249,25 +249,34 @@ namespace Cartomatic
                     }
                     else
                     {
-                        Log("Compressing data...");
+                        
 
                         //this should get the name of the actual directory...
                         var inputDir = Path.GetFileNameWithoutExtension(backupConfiguration.InputPath);
+                        var zipFName = $"{inputDir.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd}.zip";
 
+                        //prior to zipping, check for zip presence - no point in zipping a shitload of data if it will not be sent anyway
+                        if (await ftpBase.FileExistsAsync(zipFName))
+                        {
+                            Log($"File already exists in FTP, skipping: {ftpBase.GetEffectiveUri()}/{zipFName}");
+                        }
+                        else
+                        {
+                            Log("Compressing data...");
+                            var zipFPath = Path.Combine(_tmpDir, zipFName);
 
-                        var zipFName = Path.Combine(backupConfiguration.InputPath.Replace(inputDir, string.Empty), $"{inputDir.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd}.zip");
+                            System.IO.Compression.ZipFile.CreateFromDirectory(
+                                backupConfiguration.InputPath,
+                                zipFPath,
+                                backupConfiguration.CompressionLevel ?? CompressionLevel.Fastest,
+                                false
+                            );
 
-                        System.IO.Compression.ZipFile.CreateFromDirectory(
-                            backupConfiguration.InputPath,
-                            zipFName,
-                            backupConfiguration.CompressionLevel ?? CompressionLevel.Fastest, 
-                            false
-                        );
+                            filesToUpload.Add(zipFPath);
+                            tmpFilesToCleanUp.Add(zipFPath);
 
-                        filesToUpload.Add(zipFName);
-                        tmpFilesToCleanUp.Add(zipFName);
-
-                        Log("Data compressed");
+                            Log("Data compressed");
+                        }
                     }
                 }
                 else
@@ -291,7 +300,7 @@ namespace Cartomatic
                     Log($"Uploading file: {fName}...");
                     if (await ftpBase.FileExistsAsync(fName))
                     {
-                        Log($"File already exists: {fName}");
+                        Log($"File already exists!");
                     }
                     else
                     {
@@ -313,17 +322,17 @@ namespace Cartomatic
                                 }
                                 else
                                 {
-                                    LogErr($"File sha MISMATCH: {fName}");
+                                    LogErr($"File sha MISMATCH!");
                                 }
                             }
                             else
                             {
-                                LogErr($"Failed to download file: {fName}");
+                                LogErr($"Failed to download file!");
                             }
                         }
                         else
                         {
-                            LogErr($"Failed to upload: {fName}");
+                            LogErr($"Failed to upload!");
                         }
                     }
                 }
