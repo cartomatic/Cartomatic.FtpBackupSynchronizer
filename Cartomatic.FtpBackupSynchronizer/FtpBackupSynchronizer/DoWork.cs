@@ -54,6 +54,9 @@ namespace Cartomatic
         public async Task DoWorkAsync()
         {
             _processingErrors = new List<string>();
+            _filesUploaded = new List<string>();
+            _filesCleanedUpLocally = new List<string>();
+            _filesCleanedUpFtp = new List<string>();
 
             SayHello();
 
@@ -79,26 +82,34 @@ namespace Cartomatic
             }
 
             //notify errors
-            if (_processingErrors.Any())
-            {
-                Log("Emaling error notification...");
-                await SendErrorNotificationEmail();
-                Log($"Email(s) sent{_nl}");
-            }
+            Log("Emaling notification...");
+            await SendProcessingLogEmail();
+            Log($"Email(s) sent{_nl}");
 
             SayGoodBy();
         }
 
-        private async Task SendErrorNotificationEmail()
+        private async Task SendProcessingLogEmail()
         {
             var emailAcount = _cfg.GetSection("EmailSender").Get<EmailAccount>();
             var emailRecipients = _cfg.GetSection("EmailRecipients").Get<List<string>>();
-            var ctx = _cfg.GetSection("EmailContext").Get<string>(); 
+            var ctx = _cfg.GetSection("EmailContext").Get<string>();
+
+            var title = $"{ctx} ::  PROCESSING LOG";
+            if (_processingErrors.Count > 0)
+                title += " :: ERRORS OCCURED";
+
+
             var emailTemplate = new EmailTemplate
             {
-                Title = $"{ctx} ::  ERROR",
-                Body = @$"Some errors occurred during backup utility run:
-{string.Join(Environment.NewLine, _processingErrors)}",
+                Title = title,
+                Body = @$"{GetFilesUploadedLog()}
+
+{GetFilesCleanedUpFtpLog()}
+
+{GetFilesCleanedUpLog()}
+
+{GetErrorLog()}",
                 IsBodyHtml = false
             };
 
@@ -108,6 +119,24 @@ namespace Cartomatic
                 await emailSender.SendAsync(emailAcount, emailTemplate, emailRecipient);
             }
         }
+
+        private string GetFilesUploadedLog()
+            => $@"Files uploaded:
+{(_filesUploaded.Count > 0 ? string.Join(Environment.NewLine, _filesUploaded) : "---")}";
+
+        private string GetFilesCleanedUpLog()
+            => $@"Files cleaned up locally:
+{(_filesCleanedUpLocally.Count > 0 ? string.Join(Environment.NewLine, _filesCleanedUpLocally) : "---")}";
+
+        private string GetFilesCleanedUpFtpLog()
+            => $@"Files cleand up FTP:
+{(_filesCleanedUpFtp.Count > 0 ? string.Join(Environment.NewLine, _filesCleanedUpFtp) : "---")}
+";
+
+        private string GetErrorLog()
+            => @$"Errors occurred during backup utility run:
+{(_processingErrors.Count > 0 ? string.Join(Environment.NewLine, _processingErrors) : "---")}";
+        
 
         /// <summary>
         /// Cleans up FTP files
@@ -135,6 +164,7 @@ namespace Cartomatic
                     if (await ftpBase.DeleteFileAsync(entry))
                     {
                         Log("Filed cleaned up");
+                        _filesCleanedUpFtp.Add($"{ftpBase.GetEffectiveUri()}/{entry}");
                     }
                     else
                     {
@@ -167,6 +197,7 @@ namespace Cartomatic
                 {
                     Log($"Cleaning up: {file}");
                     File.Delete(file);
+                    _filesCleanedUpLocally.Add(file);
                 }
             }
 
@@ -260,7 +291,7 @@ namespace Cartomatic
                     Log($"Uploading file: {fName}...");
                     if (await ftpBase.FileExistsAsync(fName))
                     {
-                        LogErr($"File already exists: {fName}");
+                        Log($"File already exists: {fName}");
                     }
                     else
                     {
@@ -278,6 +309,7 @@ namespace Cartomatic
                                 if (ComputeFileSha(fileToUpload) == ComputeFileSha(tmpPath))
                                 {
                                     Log("File sha OK");
+                                    _filesUploaded.Add(fileToUpload);
                                 }
                                 else
                                 {

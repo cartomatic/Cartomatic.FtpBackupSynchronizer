@@ -22,12 +22,15 @@ namespace Cartomatic
         private readonly ILogger _logger;
 
         private List<string> _processingErrors;
+        private List<string> _filesUploaded;
+        private List<string> _filesCleanedUpLocally;
+        private List<string> _filesCleanedUpFtp;
 
         private readonly string _tmpDir;
 
         public FtpBackupSynchronizer()
         {
-            _cfg = Cartomatic.Utils.NetCoreConfig.GetNetCoreConfig();
+            _cfg = Cartomatic.Utils.NetCoreConfig.GetNetCoreConfig("appsettings.dev");
             _ftpBaseSettings = _cfg.GetSection("FtpCfg").Get<FtpRequestSettings>();
 
             _tmpDir = _cfg.GetSection("Tmp").Get<string>().SolvePath();
