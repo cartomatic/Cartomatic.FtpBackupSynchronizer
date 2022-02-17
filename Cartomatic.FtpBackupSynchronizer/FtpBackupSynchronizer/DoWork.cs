@@ -309,7 +309,7 @@ namespace Cartomatic
                             Log("Upload completed");
 
                             Log("Verifying file consistency - downloading file...");
-                            var tmpPath = Path.Combine(_tmpDir, fName);
+                            var tmpPath = Path.Combine(_tmpDir, $"{fName}.downloaded");
                             if (await ftpBase.DownloadFileAsync(fName, tmpPath))
                             {
                                 tmpFilesToCleanUp.Add(tmpPath);
