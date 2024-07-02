@@ -11,6 +11,7 @@ using Cartomatic.Utils.Ftp;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Events;
+using static Cartomatic.FtpBackupSynchronizer;
 
 namespace Cartomatic
 {
@@ -32,6 +33,16 @@ namespace Cartomatic
             /// Whether or not input content should be zipped; zips all the files and sub directories
             /// </summary>
             public bool? Compress { get; set; }
+
+            /// <summary>
+            /// Whether or not nested files should also be handled
+            /// </summary>
+            public bool? Nested { get; set; }
+
+            /// <summary>
+            /// File search pattern - if specified, a subset of files is handled
+            /// </summary>
+            public string FileExtensionFilter { get; set; }
 
             /// <summary>
             /// Compression level
@@ -281,7 +292,21 @@ namespace Cartomatic
                 }
                 else
                 {
-                    var files = Directory.GetFiles(backupConfiguration.InputPath);
+                    var files = Directory.GetFiles(
+                        backupConfiguration.InputPath,
+                        "*.*",
+                        backupConfiguration.Nested == true
+                            ? SearchOption.AllDirectories
+                            : SearchOption.TopDirectoryOnly
+                    );
+
+                    if (!string.IsNullOrWhiteSpace(backupConfiguration.FileExtensionFilter))
+                    {
+                        var extensions = backupConfiguration.FileExtensionFilter.Split(',');
+                        files = files.Where(f => extensions.Contains(Path.GetExtension(f).Substring(1))).ToArray();
+                    }
+                    
+
                     if (!files.Any())
                     {
                         Log("Nothing to backup");
@@ -295,7 +320,22 @@ namespace Cartomatic
 
                 foreach (var fileToUpload in filesToUpload)
                 {
+                    var fileToUploadLocal = fileToUpload;
                     var fName = Path.GetFileName(fileToUpload);
+
+                    var subDir = GetSubDir(fileToUpload, backupConfiguration.InputPath);
+                    if (!string.IsNullOrWhiteSpace(subDir))
+                    {
+                        var fileClone = Path.Combine(
+                            backupConfiguration.InputPath,
+                            $"{subDir.Replace("/", "__")}__{fName}"
+                        );
+                        File.Copy(fileToUpload, fileClone);
+                        tmpFilesToCleanUp.Add(fileClone);
+
+                        fileToUploadLocal = fileClone;
+                        fName = Path.GetFileName(fileToUploadLocal);
+                    }
 
                     Log($"Uploading file: {fName}...");
                     if (await ftpBase.FileExistsAsync(fName))
@@ -304,7 +344,7 @@ namespace Cartomatic
                     }
                     else
                     {
-                        if (await ftpBase.UploadFileAsync(fileToUpload))
+                        if (await ftpBase.UploadFileAsync(fileToUploadLocal))
                         {
                             Log("Upload completed");
 
@@ -315,10 +355,10 @@ namespace Cartomatic
                                 tmpFilesToCleanUp.Add(tmpPath);
 
                                 //compare sha of files!
-                                if (ComputeFileSha(fileToUpload) == ComputeFileSha(tmpPath))
+                                if (ComputeFileSha(fileToUploadLocal) == ComputeFileSha(tmpPath))
                                 {
                                     Log("File sha OK");
-                                    _filesUploaded.Add(fileToUpload);
+                                    _filesUploaded.Add(fileToUploadLocal);
                                 }
                                 else
                                 {
@@ -374,6 +414,22 @@ namespace Cartomatic
             using var fs = File.OpenRead(fName);
             var checksum = sha.ComputeHash(fs);
             return Convert.ToBase64String(checksum);
+        }
+
+        private string GetSubDir(string fileToUpload, string baseDir)
+        {
+            var fName = Path.GetFileName(fileToUpload);
+            var subDir = fileToUpload
+                .Replace(baseDir, string.Empty)
+                .Replace(fName, string.Empty)
+                .Replace("\\", "/");
+
+            if (subDir.StartsWith("/"))
+                subDir = subDir.Substring(1);
+            if (subDir.EndsWith("/"))
+                subDir = subDir.Substring(0, subDir.Length - 1);
+
+            return subDir;
         }
     }
 }

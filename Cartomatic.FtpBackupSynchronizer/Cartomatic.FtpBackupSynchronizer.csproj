@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Utils\Cartomatic.Utils\Cartomatic.Utils.csproj" />
+    <ProjectReference Include="..\..\Cartomatic.Utils\Cartomatic.Utils\Cartomatic.Utils.csproj" />
   </ItemGroup>
 
   <ItemGroup>
