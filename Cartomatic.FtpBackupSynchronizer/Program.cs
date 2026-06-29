@@ -2,7 +2,7 @@
 using Cartomatic;
 var synchronizer = new FtpBackupSynchronizer();
 
-//await synchronizer.Test();
-
-
-await synchronizer.DoWorkAsync();
+if(args.Any(x => x.ToLower() == "test"))
+    await synchronizer.TestAsync();
+else
+    await synchronizer.DoWorkAsync();

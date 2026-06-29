@@ -1,17 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Compression;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-using Cartomatic.Utils;
-using Cartomatic.Utils.Email;
+﻿using Cartomatic.Utils.Email;
 using Cartomatic.Utils.Ftp;
+using System.IO.Compression;
+using System.Net;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
-using Serilog;
-using Serilog.Events;
-using static Cartomatic.FtpBackupSynchronizer;
 
 namespace Cartomatic
 {
@@ -168,19 +160,34 @@ namespace Cartomatic
             Log($"Cleaning up FTP files older than: {backupConfiguration.DestinationDeleteOlderThanDays} day(s)...");
             foreach (var entry in await ftpBase.GetEntriesAsync())
             {
-                var lastModifyDate = await ftpBase.GetEntryLastModifiedTimeAsync(entry);
-                if(new TimeSpan(DateTime.Now.Ticks - lastModifyDate.Ticks).TotalDays > backupConfiguration.DestinationDeleteOlderThanDays)
+                if(entry.StartsWith('.') || entry.EndsWith(".")) //account for .. or somepath/., somepath/..
+                    continue;
+
+                try
                 {
-                    Log($"Cleaning up: {ftpBase.GetEffectiveUri()}/{entry}");
-                    if (await ftpBase.DeleteFileAsync(entry))
+                    //this will throw if entry is a directory, which is fine - we only want to handle files here
+                    var lastModifyDate = await ftpBase.GetEntryLastModifiedTimeAsync(entry);
+
+                    if (new TimeSpan(DateTime.Now.Ticks - lastModifyDate.Ticks).TotalDays >
+                        backupConfiguration.DestinationDeleteOlderThanDays)
                     {
-                        Log("Filed cleaned up");
-                        _filesCleanedUpFtp.Add($"{ftpBase.GetEffectiveUri()}/{entry}");
+                        Log($"Cleaning up: {ftpBase.GetEffectiveUri()}/{entry}");
+                        if (await ftpBase.DeleteFileAsync(entry))
+                        {
+                            Log("Filed cleaned up");
+                            _filesCleanedUpFtp.Add($"{ftpBase.GetEffectiveUri()}/{entry}");
+                        }
+                        else
+                        {
+                            LogErr($"Failed to clean FTP file: {ftpBase.GetEffectiveUri()}/{entry}");
+                        }
                     }
-                    else
-                    {
-                        LogErr($"Failed to clean FTP file!");
-                    }
+                }
+                catch(Exception ex)
+                {
+                    LogErr($"Failed to clean FTP file: {ftpBase.GetEffectiveUri()}/{entry}");
+                    LogErr(ex);
+                    DumpWebExceptionDetails(ex);
                 }
             }
             Log("FTP file cleanup completed");
@@ -395,6 +402,7 @@ namespace Cartomatic
             catch (Exception ex)
             {
                 LogErr(ex);
+                DumpWebExceptionDetails(ex);
             }
 
             await FtpCleanupAsync(backupConfiguration);
@@ -430,6 +438,23 @@ namespace Cartomatic
                 subDir = subDir.Substring(0, subDir.Length - 1);
 
             return subDir;
+        }
+
+        private void DumpWebExceptionDetails(Exception ex)
+        {
+            if (ex is not WebException wEx)
+                return;
+
+            var resp = (FtpWebResponse)wEx.Response;
+            if (resp == null)
+            {
+                LogErr("No respnse details could be obtained");
+                return;
+            }
+
+            LogErr($"Resource uri: {resp.ResponseUri}");
+            LogErr($"Status code: {resp.StatusCode}");
+            LogErr($"Status description: {resp.StatusDescription}");
         }
     }
 }
